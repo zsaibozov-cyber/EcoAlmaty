@@ -1,99 +1,89 @@
-<!doctype html>
-<html lang="ru">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Экологический рентген Алматы</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<link rel="stylesheet" href="style.css">
-<link rel="stylesheet" href="chat.css">
-</head>
-<body>
-<div class="bg"><main class="sheet">
-<header class="nav" id="top">
-  <a class="logo" href="#home">ЭКО<span> / АЛМАТЫ</span></a>
-  <button class="burger" aria-label="Меню" aria-expanded="false">☰</button>
-  <nav id="menu">
-    <a href="#home">Главная</a><a href="#districts">Районы</a><a href="#indicators">Экологические показатели</a>
-    <a href="#compare">Сравнение</a><a href="#method">Методология</a><a href="#sources">Источники</a>
-  </nav>
-  <a class="btn lime sm" href="#map-section">Исследовать карту</a>
-</header>
+(function () {
+  var css =
+    '.air-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-top:14px}' +
+    '.air-card{border:1px solid rgba(128,128,128,.35);border-radius:16px;padding:16px}' +
+    '.air-card h3{margin:0 0 10px;font-size:1.05rem}' +
+    '.air-aqi{display:inline-block;padding:4px 12px;border-radius:999px;font-weight:800;color:#111;margin-bottom:10px}' +
+    '.air-row{display:flex;justify-content:space-between;gap:10px;padding:5px 0;border-bottom:1px dashed rgba(128,128,128,.3)}' +
+    '.air-row:last-child{border-bottom:0}';
+  var st = document.createElement('style');
+  st.textContent = css;
+  document.head.appendChild(st);
 
-<section id="home" class="hero">
-  <div>
-    <span class="tag">ПИЛОТНЫЙ ПРОЕКТ · 3 РАЙОНА</span>
-    <h1>Алматы под экологическим рентгеном</h1>
-    <p>Исследуйте экологическое состояние районов города. Озеленение, воздух, городской перегрев, транспорт и отходы — в одной интерактивной системе.</p>
-    <div class="row"><a class="btn dark" href="#districts">Исследовать районы</a><a class="btn ghost" href="#map-section">Открыть карту</a></div>
-  </div>
-  <div class="mapwrap"><div id="map-hero" class="map" role="application" aria-label="Карта районов"></div></div>
-  <div class="stats">
-    <div><b>3</b>исследуемых района</div><div><b>5</b>направлений экологического анализа</div><div><b>1</b>интерактивная карта</div>
-  </div>
-</section>
+  var anchor = document.getElementById('why') || document.getElementById('districts');
+  if (!anchor) return;
+  var sec = document.createElement('section');
+  sec.id = 'air';
+  sec.className = 'block';
+  sec.innerHTML =
+    '<h2>Воздух сейчас</h2>' +
+    '<div id="air-body" class="air-grid"><p class="small">Загрузка данных…</p></div>' +
+    '<p id="air-note" class="small"></p>';
+  anchor.insertAdjacentElement('afterend', sec);
 
-<section id="why" class="block">
-  <h2>Почему это важно</h2>
-  <p class="lead">Зелёные территории, чистый воздух, температура улиц, транспортная нагрузка и обращение с отходами влияют на повседневную жизнь горожан. Чтобы обсуждать их предметно, нужны открытые, проверяемые данные — на них и построен этот атлас. Подробности по каждому району появляются только там, где есть подтверждённые источники.</p>
-  <div class="flow"><span>Геоданные</span>→<span>Спутниковые снимки и измерения</span>→<span>Обработка</span>→<span>Экологические показатели</span>→<span>Сравнение районов</span></div>
-</section>
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function num(n) {
+    return n == null ? '—' : String(Math.round(n * 10) / 10);
+  }
+  // Европейский индекс качества воздуха (EAQI)
+  function level(a) {
+    if (a == null) return { t: 'нет данных', c: '#cccccc' };
+    if (a <= 20) return { t: 'хорошее', c: '#7fd1a8' };
+    if (a <= 40) return { t: 'приемлемое', c: '#b9e07a' };
+    if (a <= 60) return { t: 'умеренное', c: '#ffe066' };
+    if (a <= 80) return { t: 'плохое', c: '#ffb066' };
+    if (a <= 100) return { t: 'очень плохое', c: '#ff7a7a' };
+    return { t: 'крайне плохое', c: '#c77dff' };
+  }
+  function card(title, d) {
+    var l = level(d.aqi);
+    return (
+      '<div class="air-card"><h3>' + esc(title) + '</h3>' +
+      '<div class="air-aqi" style="background:' + l.c + '">AQI ' + num(d.aqi) + ' · ' + l.t + '</div>' +
+      '<div class="air-row"><span>PM2.5</span><b>' + num(d.pm2_5) + ' мкг/м³</b></div>' +
+      '<div class="air-row"><span>PM10</span><b>' + num(d.pm10) + ' мкг/м³</b></div>' +
+      '<div class="air-row"><span>NO₂</span><b>' + num(d.no2) + ' мкг/м³</b></div>' +
+      '</div>'
+    );
+  }
 
-<section id="districts" class="block">
-  <h2>Три района</h2>
-  <div class="cards" id="cards"></div>
-</section>
+  fetch('data/latest.json?t=' + Date.now())
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      var list = Object.keys(data.districts || {}).map(function (k) { return data.districts[k]; });
+      if (!list.length) throw new Error('empty');
+      var same = list.every(function (d) {
+        return d.pm2_5 === list[0].pm2_5 && d.pm10 === list[0].pm10 &&
+               d.no2 === list[0].no2 && d.aqi === list[0].aqi;
+      });
+      var html, extra = '';
+      if (same) {
+        html = card('Алматы (общая оценка)', list[0]);
+        extra = 'Модель не различает три района: значения совпадают, поэтому показана одна оценка для города. ';
+      } else {
+        html = list.map(function (d) { return card(d.name, d); }).join('');
+      }
+      if (list.some(function (d) { return d.stale; })) extra += '⚠ Часть данных устарела. ';
+      document.getElementById('air-body').innerHTML = html;
 
-<section id="map-section" class="block">
-  <h2 id="d-title">Выберите район</h2>
-  <div class="split">
-    <div>
-      <div class="mapbar" role="group" aria-label="Подложка">
-        <button data-base="sat">Спутник</button><button data-base="street" class="on">Улицы</button><button data-base="eco">Экологические слои</button>
-        <button id="reset">Весь город</button>
-      </div>
-      <div class="mapwrap"><div id="map-main" class="map tall"></div><div id="eco-note" class="eco-note" hidden></div></div>
-      <p class="small">По умолчанию — уличная карта OpenStreetMap. Спутниковая подложка (Esri World Imagery) — архивный снимок, не изображение в реальном времени. Границы: OpenStreetMap contributors.</p>
-    </div>
-    <aside id="d-panel" class="panel" aria-live="polite"></aside>
-  </div>
-</section>
-
-<section id="indicators" class="block">
-  <h2>Пять измерений городской среды</h2>
-  <div class="tabs" id="tabs" role="tablist"></div>
-  <div id="cat-panel" class="panel" aria-live="polite"></div>
-  <div class="chartbox" id="waste-box"><h3>Отходы · Алматы в целом, 2025 год (не по районам)</h3><canvas id="wasteChart" height="110"></canvas></div>
-</section>
-
-<section id="compare" class="block">
-  <h2>Сравнить районы</h2>
-  <div class="row" id="cmp-pick"></div>
-  <div class="tablewrap"><table id="cmp-table"></table></div>
-  <div class="chartbox"><h3 id="cmp-title">Площадь района, км² (расчёт по границам OSM)</h3><canvas id="areaChart" height="90"></canvas></div>
-  <p class="small">Общий рейтинг и сводный балл не рассчитываются: подтверждённых районных данных по экологическим показателям пока нет.</p>
-</section>
-
-<section id="method" class="block">
-  <h2>Методология</h2>
-  <div id="method-list" class="method"></div>
-</section>
-
-<section id="sources" class="block">
-  <h2>Источники</h2>
-  <ul id="src-list" class="srcs"></ul>
-</section>
-
-<section class="final"><h2>Город становится понятнее, когда его можно исследовать</h2><a class="btn lime" href="#map-section">Перейти к карте</a></section>
-<footer>ЭКОЛОГИЧЕСКИЙ РЕНТГЕН АЛМАТЫ · пилотное исследование, 3 района. Данные: Казгидромет, gov.kz, stat.gov.kz, OpenStreetMap, Esri, Copernicus, USGS/NASA (см. «Источники»).</footer>
-</main></div>
-<button id="toTop" aria-label="Наверх" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
-<div id="toast" role="status"></div>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-<script src="data/environmental-data.js"></script>
-<script src="script.js"></script>
-<script src="chat.js"></script>
-</body></html>
+      var t = list[0].measured_at ? list[0].measured_at.replace('T', ' ') : '—';
+      var upd = '';
+      try {
+        upd = new Date(data.updated_at).toLocaleString('ru-RU', { timeZone: 'Asia/Almaty' });
+      } catch (e) {}
+      var src = data.source || {};
+      var link = (src.url && src.url.indexOf('https://') === 0)
+        ? '<a href="' + esc(src.url) + '" target="_blank" rel="noopener">' + esc(src.name || 'источник') + '</a>'
+        : esc(src.name || 'источник');
+      document.getElementById('air-note').innerHTML =
+        extra + 'Замер: ' + esc(t) + ' (время Алматы). Обновлено: ' + esc(upd) + '. Источник: ' + link + '.';
+    })
+    .catch(function () {
+      document.getElementById('air-body').innerHTML = '<p class="small">Данные временно недоступны.</p>';
+    });
+})();
+      
