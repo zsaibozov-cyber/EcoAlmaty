@@ -1,0 +1,88 @@
+(function () {
+  var css =
+    '.air-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-top:14px}' +
+    '.air-card{border:1px solid rgba(128,128,128,.35);border-radius:16px;padding:16px}' +
+    '.air-card h3{margin:0 0 10px;font-size:1.05rem}' +
+    '.air-aqi{display:inline-block;padding:4px 12px;border-radius:999px;font-weight:800;color:#111;margin-bottom:10px}' +
+    '.air-row{display:flex;justify-content:space-between;gap:10px;padding:5px 0;border-bottom:1px dashed rgba(128,128,128,.3)}' +
+    '.air-row:last-child{border-bottom:0}';
+  var st = document.createElement('style');
+  st.textContent = css;
+  document.head.appendChild(st);
+
+  var anchor = document.getElementById('why') || document.getElementById('districts');
+  if (!anchor) return;
+  var sec = document.createElement('section');
+  sec.id = 'air';
+  sec.className = 'block';
+  sec.innerHTML =
+    '<h2>Воздух сейчас</h2>' +
+    '<div id="air-body" class="air-grid"><p class="small">Загрузка данных…</p></div>' +
+    '<p id="air-note" class="small"></p>';
+  anchor.insertAdjacentElement('afterend', sec);
+
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function num(n) {
+    return n == null ? '—' : String(Math.round(n * 10) / 10);
+  }
+  // Европейский индекс качества воздуха (EAQI)
+  function level(a) {
+    if (a == null) return { t: 'нет данных', c: '#cccccc' };
+    if (a <= 20) return { t: 'хорошее', c: '#7fd1a8' };
+    if (a <= 40) return { t: 'приемлемое', c: '#b9e07a' };
+    if (a <= 60) return { t: 'умеренное', c: '#ffe066' };
+    if (a <= 80) return { t: 'плохое', c: '#ffb066' };
+    if (a <= 100) return { t: 'очень плохое', c: '#ff7a7a' };
+    return { t: 'крайне плохое', c: '#c77dff' };
+  }
+  function card(title, d) {
+    var l = level(d.aqi);
+    return (
+      '<div class="air-card"><h3>' + esc(title) + '</h3>' +
+      '<div class="air-aqi" style="background:' + l.c + '">AQI ' + num(d.aqi) + ' · ' + l.t + '</div>' +
+      '<div class="air-row"><span>PM2.5</span><b>' + num(d.pm2_5) + ' мкг/м³</b></div>' +
+      '<div class="air-row"><span>PM10</span><b>' + num(d.pm10) + ' мкг/м³</b></div>' +
+      '<div class="air-row"><span>NO₂</span><b>' + num(d.no2) + ' мкг/м³</b></div>' +
+      '</div>'
+    );
+  }
+
+  fetch('data/latest.json?t=' + Date.now())
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      var list = Object.keys(data.districts || {}).map(function (k) { return data.districts[k]; });
+      if (!list.length) throw new Error('empty');
+      var same = list.every(function (d) {
+        return d.pm2_5 === list[0].pm2_5 && d.pm10 === list[0].pm10 &&
+               d.no2 === list[0].no2 && d.aqi === list[0].aqi;
+      });
+      var html, extra = '';
+      if (same) {
+        html = card('Алматы (общая оценка)', list[0]);
+        extra = 'Модель не различает три района: значения совпадают, поэтому показана одна оценка для города. ';
+      } else {
+        html = list.map(function (d) { return card(d.name, d); }).join('');
+      }
+      if (list.some(function (d) { return d.stale; })) extra += '⚠ Часть данных устарела. ';
+      document.getElementById('air-body').innerHTML = html;
+
+      var t = list[0].measured_at ? list[0].measured_at.replace('T', ' ') : '—';
+      var upd = '';
+      try {
+        upd = new Date(data.updated_at).toLocaleString('ru-RU', { timeZone: 'Asia/Almaty' });
+      } catch (e) {}
+      var src = data.source || {};
+      var link = (src.url && src.url.indexOf('https://') === 0)
+        ? '<a href="' + esc(src.url) + '" target="_blank" rel="noopener">' + esc(src.name || 'источник') + '</a>'
+        : esc(src.name || 'источник');
+      document.getElementById('air-note').innerHTML =
+        extra + 'Замер: ' + esc(t) + ' (время Алматы). Обновлено: ' + esc(upd) + '. Источник: ' + link + '.';
+    })
+    .catch(function () {
+      document.getElementById('air-body').innerHTML = '<p class="small">Данные временно недоступны.</p>';
+    });
+})();
