@@ -21,7 +21,7 @@ def fetch(lat, lon):
     with urllib.request.urlopen(url, timeout=30) as r:
         return json.load(r)
 
-def main():
+def main(): 
     # Старые данные читаем, чтобы не затирать их при сбое источника
     try:
         with open(OUT, encoding="utf-8") as f:
