@@ -15,7 +15,64 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: python scripts/fetch.py
+      - name: Fetch air data
+        run: |
+          python - <<'PY'
+          import json, os, urllib.request, urllib.parse
+          from datetime import datetime, timezone
+
+          DISTRICTS = {
+              "nauryzbay": {"name": "Наурызбайский", "lat": 43.200, "lon": 76.780},
+              "almaly":    {"name": "Алмалинский",   "lat": 43.255, "lon": 76.915},
+              "turksib":   {"name": "Турксибский",   "lat": 43.320, "lon": 76.990},
+          }
+          FIELDS = "pm10,pm2_5,nitrogen_dioxide,european_aqi"
+          OUT = "data/latest.json"
+
+          def fetch(lat, lon):
+              q = urllib.parse.urlencode({
+                  "latitude": lat, "longitude": lon,
+                  "current": FIELDS, "timezone": "Asia/Almaty",
+              })
+              url = "https://air-quality-api.open-meteo.com/v1/air-quality?" + q
+              with urllib.request.urlopen(url, timeout=30) as r:
+                  return json.load(r)
+
+          try:
+              with open(OUT, encoding="utf-8") as f:
+                  old = json.load(f)
+          except Exception:
+              old = {}
+          old_d = old.get("districts", {})
+
+          result = {"districts": {}}
+          for key, d in DISTRICTS.items():
+              try:
+                  cur = fetch(d["lat"], d["lon"])["current"]
+                  result["districts"][key] = {
+                      "name": d["name"],
+                      "pm2_5": cur.get("pm2_5"),
+                      "pm10": cur.get("pm10"),
+                      "no2": cur.get("nitrogen_dioxide"),
+                      "aqi": cur.get("european_aqi"),
+                      "measured_at": cur.get("time"),
+                      "stale": False,
+                  }
+              except Exception as e:
+                  print("Ошибка для", key, e)
+                  prev = old_d.get(key, {"name": d["name"]})
+                  prev["stale"] = True
+                  result["districts"][key] = prev
+
+          result["updated_at"] = datetime.now(timezone.utc).isoformat()
+          result["source"] = {
+              "name": "Open-Meteo Air Quality (модельные данные, не станция)",
+              "url": "https://open-meteo.com/en/docs/air-quality-api",
+          }
+          os.makedirs("data", exist_ok=True)
+          with open(OUT, "w", encoding="utf-8") as f:
+              json.dump(result, f, ensure_ascii=False, indent=2)
+          PY
       - name: Commit if changed
         run: |
           git config user.name "github-actions"
