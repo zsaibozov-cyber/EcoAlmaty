@@ -2,33 +2,33 @@
   "districts": {
     "nauryzbay": {
       "name": "Наурызбайский",
-      "pm2_5": 25.1,
-      "pm10": 26.8,
-      "no2": 21.4,
-      "aqi": 46,
-      "measured_at": "2026-11-22T06:00",
+      "pm2_5": 32.6,
+      "pm10": 34.2,
+      "no2": 25.6,
+      "aqi": 50,
+      "measured_at": "2026-11-22T07:00",
       "stale": false
     },
     "almaly": {
       "name": "Алмалинский",
-      "pm2_5": 25.1,
-      "pm10": 26.8,
-      "no2": 21.4,
-      "aqi": 46,
-      "measured_at": "2026-11-22T06:00",
+      "pm2_5": 32.6,
+      "pm10": 34.2,
+      "no2": 25.6,
+      "aqi": 50,
+      "measured_at": "2026-11-22T07:00",
       "stale": false
     },
     "turksib": {
       "name": "Турксибский",
-      "pm2_5": 25.1,
-      "pm10": 26.8,
-      "no2": 21.4,
-      "aqi": 46,
-      "measured_at": "2026-11-22T06:00",
+      "pm2_5": 32.6,
+      "pm10": 34.2,
+      "no2": 25.6,
+      "aqi": 50,
+      "measured_at": "2026-11-22T07:00",
       "stale": false
     }
   },
-  "updated_at": "2026-11-22T01:58:12.121999+00:00",
+  "updated_at": "2026-11-22T02:49:49.680262+00:00",
   "source": {
     "name": "Open-Meteo Air Quality (модельные данные, не станция)",
     "url": "https://open-meteo.com/en/docs/air-quality-api"
